@@ -13,6 +13,8 @@ injection via Context/Layer, fiber-safe concurrency, and resource safety.
 
 **When in doubt about an API, verify it with the `effect_api` tool**
 (see the `effect-api-reference` skill) rather than asserting from memory.
+If a version isn't cloned yet, call `effect_api_clone` first, then use
+`effect_api` to search/read.
 
 ## When to Use
 

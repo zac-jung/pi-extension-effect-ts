@@ -226,8 +226,19 @@ async function readSourceFile(
   return text;
 }
 
-const Params = Type.Object({
-  action: StringEnum(["list", "clone", "search", "read"]),
+/** Require a version to be already cloned. Throws if not — read-only tools must not clone. */
+async function requireCloned(version: string): Promise<string> {
+  const dir = versionDir(version);
+  if (!(await exists(join(dir, ".git")))) {
+    throw new Error(
+      `effect@${version} is not cloned. Use the effect_api_clone tool to fetch it first, then retry.`,
+    );
+  }
+  return dir;
+}
+
+const ReadParams = Type.Object({
+  action: StringEnum(["list", "search", "read"]),
   version: Type.Optional(
     Type.String({
       description:
@@ -249,6 +260,15 @@ const Params = Type.Object({
   package: Type.Optional(
     StringEnum(["effect", "platform", "all"], {
       description: "Scope for 'search'. Defaults to 'effect'.",
+    }),
+  ),
+});
+
+const CloneParams = Type.Object({
+  version: Type.Optional(
+    Type.String({
+      description:
+        "Effect version to clone, e.g. '3.21.4'. Defaults to 'latest' (resolved from npm).",
     }),
   ),
 });
@@ -343,17 +363,19 @@ export default function (pi: ExtensionAPI) {
     label: "Effect.ts API",
     description:
       "Look up Effect.ts API from the official source, version-pinned. Actions: " +
-      "'list' (cloned versions + npm latest), 'clone' (fetch a version), " +
-      "'search' (grep symbol in source), 'read' (open a source file). " +
-      "search/read auto-clone the version if missing. Use this instead of guessing Effect signatures.",
+      "'list' (cloned versions + npm latest), 'search' (grep symbol in source), " +
+      "'read' (open a source file). This tool is read-only — it does NOT clone. " +
+      "If a version is not cloned yet, it returns an error pointing to effect_api_clone. " +
+      "Use this instead of guessing Effect signatures.",
     promptSnippet:
-      "Look up Effect.ts API signatures and source from version-pinned official source",
+      "Look up Effect.ts API signatures and source from version-pinned official source (read-only)",
     promptGuidelines: [
       "Use effect_api (action: search, then read) to verify Effect.ts signatures against the actual source instead of relying on memory, especially for version-specific behavior.",
+      "If effect_api reports a version is not cloned, call effect_api_clone to fetch it first, then retry.",
     ],
-    parameters: Params,
+    parameters: ReadParams,
 
-    async execute(_toolCallId, params, signal, onUpdate, _ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
       const { action, version, query, path, package: pkg = "effect" } = params;
 
       if (action === "list") {
@@ -364,22 +386,11 @@ export default function (pi: ExtensionAPI) {
         const lines = [
           `Effect.ts source cache: ${CACHE_DIR}`,
           `Latest on npm: ${latest}`,
-          `Cloned versions: ${cloned.length ? cloned.join(", ") : "(none — search/read will auto-clone latest)"}`,
+          `Cloned versions: ${cloned.length ? cloned.join(", ") : "(none — use effect_api_clone to fetch)"}`,
         ];
         return {
           content: [{ type: "text", text: lines.join("\n") }],
           details: { cloned, latest, cacheDir: CACHE_DIR },
-        };
-      }
-
-      if (action === "clone") {
-        const ver = await resolveVersion(version);
-        const dir = await ensureCloned(pi, ver, signal, onUpdate);
-        return {
-          content: [
-            { type: "text", text: `Cloned effect@${ver} → ${dir}` },
-          ],
-          details: { version: ver, dir },
         };
       }
 
@@ -388,7 +399,7 @@ export default function (pi: ExtensionAPI) {
           throw new Error("'query' is required for action: search");
         }
         const ver = await resolveVersion(version);
-        const dir = await ensureCloned(pi, ver, signal, onUpdate);
+        const dir = await requireCloned(ver);
         const text = await searchSource(pi, dir, query, pkg, signal);
         return {
           content: [{ type: "text", text }],
@@ -401,7 +412,7 @@ export default function (pi: ExtensionAPI) {
           throw new Error("'path' is required for action: read");
         }
         const ver = await resolveVersion(version);
-        const dir = await ensureCloned(pi, ver, signal, onUpdate);
+        const dir = await requireCloned(ver);
         const text = await readSourceFile(dir, path, signal);
         return {
           content: [{ type: "text", text }],
@@ -410,6 +421,30 @@ export default function (pi: ExtensionAPI) {
       }
 
       throw new Error(`Unknown action: ${action}`);
+    },
+  });
+
+  pi.registerTool({
+    name: "effect_api_clone",
+    label: "Effect.ts Clone",
+    description:
+      "Clone the Effect.ts monorepo at a pinned version into the local cache " +
+      "(~/.pi/effect-ts-src/<version>/). This is the only write action — " +
+      "effect_api (search/read) requires the version to be cloned first. " +
+      "Use this when effect_api reports a version is not cloned.",
+    promptSnippet:
+      "Fetch Effect.ts source for a specific version (write — clone to cache)",
+    parameters: CloneParams,
+
+    async execute(_toolCallId, params, signal, onUpdate, _ctx) {
+      const ver = await resolveVersion(params.version);
+      const dir = await ensureCloned(pi, ver, signal, onUpdate);
+      return {
+        content: [
+          { type: "text", text: `Cloned effect@${ver} → ${dir}` },
+        ],
+        details: { version: ver, dir },
+      };
     },
   });
 }

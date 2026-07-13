@@ -17,21 +17,31 @@ minor releases. Spend one `effect_api` call to confirm.
 
 ## How It Works
 
-The `effect_api` tool clones the official `effect-TS/effect` monorepo at a
-pinned version into `~/.pi/effect-ts-src/<version>/` and lets you search/read
-the TypeScript source directly. `search` and `read` auto-clone the version if
-it is missing (a few seconds for a shallow clone).
+The `effect_api` tool (read-only) searches and reads the official `effect-TS/effect`
+monorepo source from a local cache at `~/.pi/effect-ts-src/<version>/`. A separate
+`effect_api_clone` tool fetches versions into the cache.
+
+**Two-tool split:**
+- `effect_api` — `list` / `search` / `read`. Read-only. Does NOT clone. If a
+  version isn't cached, it returns an error pointing to `effect_api_clone`.
+- `effect_api_clone` — fetches a version (shallow clone of the `effect@<version>`
+  tag) into the cache. This is the only write action.
+
+Read-only agents (e.g. reviewers) get only `effect_api`; the main agent gets both.
 
 ## Workflow
 
-1. **Find the symbol** — `effect_api` with `action: "search"`, `query: "<symbol>"`.
+1. **Ensure the version is cloned** — `effect_api_clone` with `version: "3.21.4"`
+   (or omit version for `latest`). Skips if already cached. Only needed once per
+   version.
+2. **Find the symbol** — `effect_api` with `action: "search"`, `query: "<symbol>"`.
    Defaults to `version: "latest"` and `package: "effect"`.
    - Examples: `query: "export const succeed"`, `query: "TaggedError"`,
      `query: "acquireRelease"`.
    - Results show `file:line` with context. Pick the most relevant file.
-2. **Read the source** — `effect_api` with `action: "read"`, `path: "<file>"`
+3. **Read the source** — `effect_api` with `action: "read"`, `path: "<file>"`
    (the path printed by search, relative to repo root).
-3. **Confirm the signature**, then write/review against the real one.
+4. **Confirm the signature**, then write/review against the real one.
 
 For platform APIs, pass `package: "platform"` to `search`.
 
