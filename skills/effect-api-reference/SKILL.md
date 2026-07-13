@@ -1,6 +1,6 @@
 ---
 name: effect-api-reference
-description: Look up Effect.ts API signatures and behavior from version-pinned official source. Use when writing or reviewing Effect.ts code and you need to verify an API's exact signature, error type, service shape, or version-specific behavior. Trigger: "effect api", "effect signature", "effect docs", "effect reference", "how does Effect.X work", "Effect.ts version".
+description: 'Look up Effect.ts API signatures and behavior from version-pinned official source. Use when writing or reviewing Effect.ts code and you need to verify an API''s exact signature, error type, service shape, or version-specific behavior. Trigger: "effect api", "effect signature", "effect docs", "effect reference", "how does Effect.X work", "Effect.ts version".'
 ---
 
 # Effect.ts API Reference (via `effect_api` tool)

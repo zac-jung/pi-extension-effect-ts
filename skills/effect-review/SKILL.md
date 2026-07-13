@@ -1,6 +1,6 @@
 ---
 name: effect-review
-description: Review TypeScript code that uses Effect.ts. Checks side-effect purity, platform dependency isolation, service/layer DI patterns, error modeling, resource safety, concurrency, and overall Effect best practices. Trigger: "effect review", "review effect", "effect.ts code review", "effect best practices", "effect anti-pattern", "effect 리뷰".
+description: 'Review TypeScript code that uses Effect.ts. Checks side-effect purity, platform dependency isolation, service/layer DI patterns, error modeling, resource safety, concurrency, and overall Effect best practices. Trigger: "effect review", "review effect", "effect.ts code review", "effect best practices", "effect anti-pattern", "effect 리뷰".'
 ---
 
 # Effect.ts Review
